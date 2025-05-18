@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cute Archery Duel</title>
+<style>
+body, html { margin:0; height:100%; overflow:hidden; }
+#overlay {
+ position: fixed;
+ top: 50%;
+ left: 50%;
+ transform: translate(-50%, -50%);
+ font-size: 5rem;
+ pointer-events: none;
+ display: none;
+ }
+</style>
+</head>
+<body>
+<div id="overlay">🐱</div>
+<script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.150.1/examples/js/controls/PointerLockControls.js"></script>
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Lighting
+const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+scene.add(light);
+
+// Ground
+const groundGeo = new THREE.PlaneGeometry(200, 200);
+const groundMat = new THREE.MeshPhongMaterial({color: 0x88cc88});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
+// Player controls
+const controls = new THREE.PointerLockControls(camera, renderer.domElement);
+document.body.addEventListener('click', () => controls.lock());
+
+// Player starting position
+camera.position.set(0, 2, 10);
+
+// AI character
+const ai = new THREE.Group();
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshStandardMaterial({color:0xffcccc}));
+head.position.y = 1.5;
+ai.add(head);
+const body = new THREE.Mesh(new THREE.BoxGeometry(1,1.2,0.5), new THREE.MeshStandardMaterial({color:0xff7777}));
+body.position.y = 0.6;
+ai.add(body);
+ai.position.set(0,0,0);
+scene.add(ai);
+
+// Arrow geometry
+const arrowGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.5);
+const arrowMat = new THREE.MeshStandardMaterial({color:0xffaa00});
+function createArrow(){
+ const mesh = new THREE.Mesh(arrowGeo, arrowMat);
+ return mesh;
+}
+
+// Arrays for arrows
+const playerArrows = [];
+const aiArrows = [];
+const gravity = new THREE.Vector3(0,-9.8,0);
+
+let lastAiShot = 0;
+
+function shootArrow(from, dir, arr){
+ const arrow = createArrow();
+ arrow.position.copy(from);
+ arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+ arrow.userData.velocity = dir.clone().normalize().multiplyScalar(15);
+ scene.add(arrow);
+ arr.push(arrow);
+}
+
+window.addEventListener('click', () => {
+ if(!controls.isLocked) return;
+ const dir = new THREE.Vector3();
+ camera.getWorldDirection(dir);
+ const pos = new THREE.Vector3().copy(camera.position);
+ shootArrow(pos, dir, playerArrows);
+});
+
+function aiShoot(){
+ const dir = new THREE.Vector3().subVectors(controls.getObject().position, ai.position).normalize();
+ const pos = new THREE.Vector3().copy(ai.position);
+ pos.y += 1.5;
+ shootArrow(pos, dir, aiArrows);
+}
+
+function updateArrows(arrows, target, onHit){
+ const dt = 0.016;
+ for(let i=arrows.length-1;i>=0;i--){
+ const a = arrows[i];
+ a.userData.velocity.add(gravity.clone().multiplyScalar(dt));
+ a.position.add(a.userData.velocity.clone().multiplyScalar(dt));
+ a.lookAt(a.position.clone().add(a.userData.velocity));
+ if(a.position.y < 0) { scene.remove(a); arrows.splice(i,1); continue; }
+ if(a.position.distanceTo(target.position)<1){
+ scene.remove(a); arrows.splice(i,1); onHit(); }
+ }
+}
+
+const emojis = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯'];
+const overlay = document.getElementById('overlay');
+function showEmoji(){
+ overlay.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+ overlay.style.display = 'block';
+ setTimeout(()=>overlay.style.display='none',500);
+}
+
+function animate(){
+ requestAnimationFrame(animate);
+ const time = performance.now()/1000;
+ if(time - lastAiShot > 3){
+ aiShoot();
+ lastAiShot = time;
+ }
+ updateArrows(playerArrows, ai, showEmoji);
+ updateArrows(aiArrows, controls.getObject(), showEmoji);
+ renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener('resize',()=>{
+ camera.aspect = window.innerWidth/window.innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
