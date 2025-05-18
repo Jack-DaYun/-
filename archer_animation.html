@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Archer Duel</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  canvas { display: block; }
+  #emoji {
+    position: absolute;
+    top: 40%;
+    width: 100%;
+    font-size: 80px;
+    text-align: center;
+    display: none;
+    pointer-events: none;
+  }
+  #crosshair {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    pointer-events: none;
+    color: white;
+  }
+</style>
+</head>
+<body>
+<div id="emoji"></div>
+<div id="crosshair">+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+<script>
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  camera.position.set(0, 1.6, 5);
+  camera.lookAt(0, 1, 0);
+
+  // lighting
+  const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+  light.position.set(0, 20, 0);
+  scene.add(light);
+
+  // ground
+  const groundGeo = new THREE.PlaneGeometry(20, 20);
+  const groundMat = new THREE.MeshPhongMaterial({color:0x7cc96c});
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+
+  // opponent (cute cube)
+  const opponentGeo = new THREE.BoxGeometry(1,1.5,1);
+  const opponentMat = new THREE.MeshPhongMaterial({color:0xffc0cb});
+  const opponent = new THREE.Mesh(opponentGeo, opponentMat);
+  opponent.position.set(0,0.75,-8);
+  scene.add(opponent);
+
+  const arrows = [];
+  function createArrow(from, to){
+    const group = new THREE.Group();
+    const shaftGeo = new THREE.CylinderGeometry(0.05,0.05,1,8);
+    const shaftMat = new THREE.MeshPhongMaterial({color:0xffcc00});
+    const shaft = new THREE.Mesh(shaftGeo,shaftMat);
+    shaft.rotation.z = Math.PI/2;
+    group.add(shaft);
+    const tipGeo = new THREE.ConeGeometry(0.08,0.2,8);
+    const tipMat = new THREE.MeshPhongMaterial({color:0xff6666});
+    const tip = new THREE.Mesh(tipGeo,tipMat);
+    tip.position.x = 0.5;
+    tip.rotation.z = Math.PI/2;
+    group.add(tip);
+    group.position.copy(from);
+    scene.add(group);
+    const velocity = new THREE.Vector3().subVectors(to, from).normalize().multiplyScalar(8);
+    arrows.push({mesh:group, velocity});
+  }
+
+  // handle shooting
+  window.addEventListener('click',()=>{
+    const origin = new THREE.Vector3();
+    origin.copy(camera.position);
+    const direction = new THREE.Vector3(0,1,0);
+    direction.set(0,1,0);
+    camera.getWorldDirection(direction);
+    const target = new THREE.Vector3().copy(origin).add(direction.multiplyScalar(10));
+    createArrow(origin, target);
+  });
+
+  // AI shoot timer
+  let aiCooldown = 2;
+
+  const emojiDiv = document.getElementById('emoji');
+  const emojis = ['\u{1F436}','\u{1F431}','\u{1F42D}','\u{1F430}','\u{1F43C}','\u{1F43D}','\u{1F439}','\u{1F428}','\u{1F98A}','\u{1F43B}'];
+
+  function showEmoji(){
+    const e = emojis[Math.floor(Math.random()*emojis.length)];
+    emojiDiv.textContent = e;
+    emojiDiv.style.display = 'block';
+    setTimeout(()=>{emojiDiv.style.display='none';},500);
+  }
+
+  function updateArrows(delta){
+    for(let i=arrows.length-1;i>=0;i--){
+      const a = arrows[i];
+      a.mesh.position.addScaledVector(a.velocity, delta);
+      a.velocity.y -= 9.8*delta;
+      const dir = a.velocity.clone().normalize();
+      const axis = new THREE.Vector3(0,1,0).cross(dir).normalize();
+      const angle = Math.acos(dir.y);
+      a.mesh.setRotationFromAxisAngle(axis, angle);
+      // check hit on opponent
+      if(a.mesh.position.distanceTo(opponent.position) < 0.7){
+        showEmoji();
+        scene.remove(a.mesh);
+        arrows.splice(i,1);
+      } else if(a.mesh.position.y<-1 || a.mesh.position.length()>50){
+        scene.remove(a.mesh);
+        arrows.splice(i,1);
+      }
+    }
+  }
+
+  function aiShoot(){
+    const origin = opponent.position.clone();
+    origin.y=0.75;
+    const target = camera.position.clone();
+    createArrow(origin,target);
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+
+    // simple AI movement left-right
+    opponent.position.x = Math.sin(performance.now()*0.001)*3;
+
+    updateArrows(delta);
+
+    aiCooldown -= delta;
+    if(aiCooldown<=0){
+      aiCooldown=2 + Math.random()*2;
+      aiShoot();
+    }
+
+    renderer.render(scene,camera);
+  }
+
+  const clock = new THREE.Clock();
+  animate();
+
+  window.addEventListener('resize',()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+</body>
+</html>
