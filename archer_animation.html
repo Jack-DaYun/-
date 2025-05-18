@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Q版弓箭射擊遊戲</title>
+<style>
+  body,html { margin:0; padding:0; overflow:hidden; }
+  #overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 80px;
+    display: none;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+<div id="overlay">🐱</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158/examples/js/controls/PointerLockControls.js"></script>
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Lighting
+const light = new THREE.HemisphereLight(0xffffff, 0x444444);
+light.position.set(0,20,0);
+scene.add(light);
+
+// Ground
+const groundGeo = new THREE.PlaneGeometry(100,100);
+const groundMat = new THREE.MeshPhongMaterial({color:0xaaddaa});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
+
+// Player controls
+const controls = new THREE.PointerLockControls(camera, document.body);
+const blocker = document.createElement('div');
+blocker.style.position='absolute';
+blocker.style.top=0; blocker.style.left=0;
+blocker.style.width='100%'; blocker.style.height='100%';
+blocker.style.display='flex';
+blocker.style.alignItems='center';
+blocker.style.justifyContent='center';
+blocker.style.fontSize='24px';
+blocker.style.cursor='pointer';
+blocker.innerHTML='點擊進入遊戲';
+document.body.appendChild(blocker);
+blocker.addEventListener('click', () => {
+  controls.lock();
+});
+controls.addEventListener('lock', () => { blocker.style.display='none'; });
+controls.addEventListener('unlock', () => { blocker.style.display='flex'; });
+scene.add(controls.getObject());
+
+camera.position.y = 1.6;
+
+const playerArrows = [];
+const aiArrows = [];
+const clock = new THREE.Clock();
+let overlayTimeout;
+
+// Cute arrow model
+function createArrow(color=0xff6666) {
+  const group = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02,0.02,1,8),
+    new THREE.MeshPhongMaterial({color})
+  );
+  shaft.rotation.z = Math.PI/2;
+  group.add(shaft);
+  const head = new THREE.Mesh(
+    new THREE.ConeGeometry(0.05,0.15,8),
+    new THREE.MeshPhongMaterial({color:0xffff00})
+  );
+  head.position.x = 0.5;
+  head.rotation.z = Math.PI/2;
+  group.add(head);
+  const feather = new THREE.Mesh(
+    new THREE.BoxGeometry(0.05,0.12,0.02),
+    new THREE.MeshPhongMaterial({color:0x66ccff})
+  );
+  feather.position.x = -0.45;
+  group.add(feather);
+  return group;
+}
+
+// AI character (cute cube with bow)
+const ai = new THREE.Group();
+const body = new THREE.Mesh(new THREE.BoxGeometry(0.5,1,0.3), new THREE.MeshPhongMaterial({color:0xffcc99}));
+ai.add(body);
+const bow = new THREE.Mesh(new THREE.TorusGeometry(0.3,0.02,8,16,Math.PI), new THREE.MeshPhongMaterial({color:0x996633}));
+bow.position.set(0.35,0.2,0);
+bow.rotation.z = Math.PI/2;
+ai.add(bow);
+ai.position.set(0,-0.5,-5);
+scene.add(ai);
+let aiDirection = 1;
+
+const overlay = document.getElementById('overlay');
+const animals = ['🐱','🐶','🐰','🐼','🐹','🐻','🐸','🐷','🐵','🐧'];
+
+function showAnimal() {
+  overlay.textContent = animals[Math.floor(Math.random()*animals.length)];
+  overlay.style.display = 'block';
+  clearTimeout(overlayTimeout);
+  overlayTimeout = setTimeout(()=>{ overlay.style.display='none'; }, 500);
+}
+
+function shootArrow(origin, direction, list) {
+  const arrow = createArrow();
+  arrow.position.copy(origin);
+  arrow.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0), direction.clone().normalize());
+  scene.add(arrow);
+  list.push({mesh:arrow,dir:direction.clone(),time:0});
+}
+
+// handle player shooting with left click
+window.addEventListener('mousedown', event => {
+  if (!controls.isLocked) return;
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  const pos = camera.position.clone();
+  shootArrow(pos, dir, playerArrows);
+});
+
+function moveAI(dt) {
+  ai.position.x += aiDirection * dt * 2;
+  if (ai.position.x > 3 || ai.position.x < -3) aiDirection *= -1;
+  // AI shoot occasionally
+  if (Math.random() < dt * 0.5) {
+    const dir = camera.position.clone().sub(ai.position).normalize();
+    shootArrow(ai.position.clone().add(new THREE.Vector3(0,0.5,0)), dir, aiArrows);
+  }
+}
+
+function updateArrows(list, dt, target) {
+  for (let i=list.length-1;i>=0;i--) {
+    const obj = list[i];
+    obj.mesh.position.add(obj.dir.clone().multiplyScalar(dt*10));
+    obj.time += dt;
+    if (obj.time > 5) { scene.remove(obj.mesh); list.splice(i,1); continue; }
+    if (obj.mesh.position.distanceTo(target.position) < 0.5) {
+      scene.remove(obj.mesh); list.splice(i,1);
+      showAnimal();
+    }
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  moveAI(dt);
+  updateArrows(playerArrows, dt, ai);
+  updateArrows(aiArrows, dt, controls.getObject());
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
