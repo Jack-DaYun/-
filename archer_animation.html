@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Archer Animation</title>
+<style>
+body {
+  font-family: sans-serif;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 200px;
+  margin: 20px;
+}
+.archer {
+  font-size: 48px;
+  position: relative;
+}
+.arrow {
+  position: absolute;
+  top: 0;
+  font-size: 24px;
+  transition: transform 2s linear;
+}
+#arrow1 { left: 40px; }
+#arrow2 { right: 40px; transform: rotateY(180deg); }
+</style>
+</head>
+<body>
+<div class="archer" id="archer1">🏹</div>
+<div class="archer" id="archer2">🏹</div>
+<script>
+function shoot() {
+  const archer1 = document.getElementById('archer1');
+  const archer2 = document.getElementById('archer2');
+
+  const arrow1 = document.createElement('div');
+  arrow1.className = 'arrow';
+  arrow1.id = 'arrow1';
+  arrow1.textContent = '\u27a4';
+  archer1.appendChild(arrow1);
+
+  const arrow2 = document.createElement('div');
+  arrow2.className = 'arrow';
+  arrow2.id = 'arrow2';
+  arrow2.textContent = '\u27a4';
+  archer2.appendChild(arrow2);
+
+  requestAnimationFrame(() => {
+    arrow1.style.transform = 'translateX(calc(100vw - 120px))';
+    arrow2.style.transform = 'translateX(calc(-100vw + 120px))';
+  });
+
+  const dodge1 = Math.random() > 0.5 ? '-20px' : '20px';
+  const dodge2 = Math.random() > 0.5 ? '-20px' : '20px';
+  archer1.style.transform = `translateY(${dodge1})`;
+  archer2.style.transform = `translateY(${dodge2})`;
+
+  setTimeout(() => {
+    archer1.style.transform = '';
+    archer2.style.transform = '';
+    arrow1.remove();
+    arrow2.remove();
+  }, 2000);
+}
+setInterval(shoot, 2500);
+</script>
+</body>
+</html>
