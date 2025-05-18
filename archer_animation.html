@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Archer Animation</title>
+  <style>
+    .arrow {
+      width: 0;
+      height: 0;
+      border-top: 20px solid transparent;
+      border-bottom: 20px solid transparent;
+      border-left: 40px solid black;
+      position: relative;
+      animation: move 2s linear infinite;
+    }
+    @keyframes move {
+      0% { left: 0; }
+      50% { left: 50px; }
+      100% { left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="arrow"></div>
+</body>
+</html>
