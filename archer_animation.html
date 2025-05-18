@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Archer Mini Game</title>
+<style>
+  body { margin:0; background:#f0f8ff; font-family:Arial, sans-serif; }
+  canvas { background:#fff; display:block; margin:0 auto; border:2px solid #ccc; }
+  #info { text-align:center; margin-top:10px; font-size:18px; color:#333; }
+</style>
+</head>
+<body>
+<canvas id="game" width="800" height="400"></canvas>
+<div id="info">使用左右方向鍵移動，空白鍵射箭</div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const width = canvas.width;
+const height = canvas.height;
+let playerX = width/2;
+let arrowActive = false;
+let arrowY = height-20;
+let cpuX = width/2;
+let cpuDir = 1;
+let cpuArrowActive = false;
+let cpuArrowY = 60;
+let message = '';
+function drawCpu() {
+  ctx.fillStyle = '#ffcc00';
+  ctx.beginPath();
+  ctx.arc(cpuX, 40, 20, 0, Math.PI*2);
+  ctx.fill();
+  // eyes
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(cpuX-7,34,3,0,Math.PI*2);
+  ctx.arc(cpuX+7,34,3,0,Math.PI*2);
+  ctx.fill();
+  // bow
+  ctx.strokeStyle = '#8b4513';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(cpuX+20,40,15,Math.PI/2,Math.PI*3/2);
+  ctx.stroke();
+}
+function drawArrow(x,y,dir,color){
+  ctx.fillStyle=color;
+  if(dir==='up'){ y-=16; }
+  ctx.fillRect(x-2,y,4,16);
+  ctx.beginPath();
+  if(dir==='up'){
+    ctx.moveTo(x-4,y);
+    ctx.lineTo(x+4,y);
+    ctx.lineTo(x,y-6);
+  }else{
+    ctx.moveTo(x-4,y+16);
+    ctx.lineTo(x+4,y+16);
+    ctx.lineTo(x,y+22);
+  }
+  ctx.fill();
+}
+function update(){
+  ctx.clearRect(0,0,width,height);
+  drawCpu();
+  // move cpu
+  cpuX += cpuDir*2;
+  if(cpuX<40||cpuX>width-40) cpuDir*=-1;
+  // player arrow
+  if(arrowActive){
+    arrowY-=6;
+    drawArrow(playerX,arrowY,'up','#ff69b4');
+    if(arrowY<0){arrowActive=false;arrowY=height-20;}
+    if(arrowY<60&&Math.abs(playerX-cpuX)<20){
+      message='射中了!';
+      arrowActive=false;
+      cpuArrowActive=false;
+      arrowY=height-20;
+      cpuArrowY=60;
+    }
+  }
+  // cpu arrow
+  if(cpuArrowActive){
+    cpuArrowY+=5;
+    drawArrow(cpuX,cpuArrowY,'down','#87cefa');
+    if(cpuArrowY>height){cpuArrowActive=false;cpuArrowY=60;}
+    if(cpuArrowY>height-30&&Math.abs(cpuX-playerX)<20){
+      message='被射中了!';
+      cpuArrowActive=false;
+      arrowActive=false;
+      cpuArrowY=60;
+      arrowY=height-20;
+    }
+  } else if(Math.random()<0.01){
+    cpuArrowActive=true;
+    cpuArrowY=60;
+  }
+  // info
+  ctx.fillStyle='#333';
+  ctx.font='16px Arial';
+  ctx.fillText(message,10,height-10);
+  requestAnimationFrame(update);
+}
+document.addEventListener('keydown',e=>{
+  if(e.code==='ArrowLeft'){playerX-=10;if(playerX<20)playerX=20;}
+  else if(e.code==='ArrowRight'){playerX+=10;if(playerX>width-20)playerX=width-20;}
+  else if(e.code==='Space'&& !arrowActive){arrowActive=true;arrowY=height-20;}
+});
+update();
+</script>
+</body>
+</html>
