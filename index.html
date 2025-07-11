@@ -113,16 +113,26 @@
   </header>
   <nav>
     <button data-section="vocab">単語</button>
+    <button data-section="grammar">文法</button>
     <button data-section="dialogue">会話</button>
     <button data-section="quiz">クイズ</button>
   </nav>
   <section id="vocab" class="active">
-    <div class="flashcard" id="flashcard">こんにちは
+    <div class="flashcard" id="flashcard">
+      <span id="word">こんにちは</span>
       <small id="translation">Hello</small>
       <div class="progress" id="progress">1/5</div>
     </div>
     <button id="playWord">🔊 発音</button>
     <button id="nextWord">次へ</button>
+  </section>
+  <section id="grammar">
+    <div class="flashcard" id="grammarCard">
+      <strong id="grammarTitle">文法レッスン</strong>
+      <div id="grammarText">文法を始めましょう</div>
+      <div class="progress" id="grammarProgress">1/5</div>
+    </div>
+    <button id="nextGrammar">次へ</button>
   </section>
   <section id="dialogue">
     <div id="dialogueLines"></div>
@@ -145,7 +155,7 @@ let currentWord = 0;
 
 function showWord() {
   const w = words[currentWord];
-  document.getElementById('flashcard').textContent = w.jp;
+  document.getElementById('word').textContent = w.jp;
   document.getElementById('translation').textContent = w.en;
   document.getElementById('progress').textContent = `${currentWord+1}/${words.length}`;
 }
@@ -167,6 +177,41 @@ showWord();
 document.getElementById('startBtn').onclick = () => {
   document.getElementById('intro').style.display = 'none';
 };
+
+const grammarLessons = [
+  {title: '1. です/ます',
+   text: 'です follows nouns/adjectives and ます follows verbs to make sentences polite.',
+   example: 'わたしは学生です。',
+   trans: 'I am a student.'},
+  {title: '2. 語順',
+   text: 'Japanese sentences usually follow Subject-Object-Verb order.',
+   example: 'わたしはパンを食べます。',
+   trans: 'I eat bread.'},
+  {title: '3. 助詞',
+   text: 'Particles mark the role of words: は topic, を object, が subject.',
+   example: 'これは水です。',
+   trans: 'This is water.'},
+  {title: '4. か question marker',
+   text: 'Add か at the end of a sentence to form a question.',
+   example: 'おげんきですか。',
+   trans: 'How are you?'},
+  {title: '5. これ/それ/あれ',
+   text: 'これ=this near me, それ=that near you, あれ=that over there.',
+   example: 'それはなんですか。',
+   trans: 'What is that?'}
+];
+let currentGrammar = 0;
+function showGrammar() {
+  const g = grammarLessons[currentGrammar];
+  document.getElementById('grammarTitle').textContent = g.title;
+  document.getElementById('grammarText').innerHTML = `${g.text}<br><em>${g.example}</em><br>${g.trans}`;
+  document.getElementById('grammarProgress').textContent = `${currentGrammar+1}/${grammarLessons.length}`;
+}
+document.getElementById('nextGrammar').onclick = () => {
+  currentGrammar = (currentGrammar + 1) % grammarLessons.length;
+  showGrammar();
+};
+showGrammar();
 
 const dialogue = [
   {speaker: 'A', line: 'おはようございます'},
